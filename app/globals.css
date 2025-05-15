@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 11%; /* #1B1B1B */
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 15%; /* #262626 */
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 15%; /* #262626 */
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 162 70% 46%; /* #23C69A */
+    --primary-foreground: 0 0% 11%; /* #1B1B1B */
+
+    --secondary: 0 0% 15%; /* #262626 */
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 70%;
+
+    --accent: 162 70% 46%; /* #23C69A with lower opacity */
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 162 70% 46%; /* #23C69A */
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Mulish', sans-serif;
+  }
+}
+
+.bg-grid-white\/10 {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='rgb(255 255 255 / 0.1)'%3e%3cpath d='M0 .5H31.5V32'/%3e%3c/svg%3e");
+}
+
