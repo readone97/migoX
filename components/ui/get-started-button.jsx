@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { Button } from './button';
-import { ArrowRightIcon } from 'lucide-react';
+  
+import { ArrowRight, ArrowRightIcon } from 'lucide-react';
 import Link from "next/link";
 
 const GetStartedButton = () => {
@@ -12,14 +13,14 @@ const GetStartedButton = () => {
       
       {/* Button with Link */}
       <div className="relative">
-         <Link href="/login" className="block w-full">
+        <Link href="/login" className="block w-full">
           <Button  
            className="relative overflow-hidden group bg-[#23C69A] hover:bg-[#23C69A]/90 text-[#1B1B1B]">
             <span>Get Started</span>
             <ArrowRightIcon className="w-4 h-4" />
           </Button>
-        </Link> 
-{/*          <Button            
+        </Link>
+         {/* <Button            
             className="relative overflow-hidden group bg-[#23C69A] hover:bg-[#23C69A]/90 text-[#1B1B1B]"         >
              <Link href="/login">
                <span className="relative z-10">Get Started</span>

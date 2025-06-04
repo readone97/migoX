@@ -1,623 +1,251 @@
-// "use client"
 
-// import type React from "react"
+import React, { useState, useEffect } from 'react';
+import { useToast } from "@/hooks/use-toast"; 
+import { Check, Loader2 } from 'lucide-react';
+import BankSelector from './BankSelector';
+import { useBankVerification } from '../hooks/useBankVerification';
+import { useAccountContext } from '../context/AccountContext';
+import { getBankNameByCode } from '../services/bankApi';
+import { Bank } from '../types';
+import { fetchBanks } from '../services/bankApi';
+import { Button } from './ui/button';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-// import { useState } from "react"
-
-// import { Button } from "@/components/ui/button"
-// import { DialogFooter } from "@/components/ui/dialog"
-// import { Input } from "@/components/ui/input"
-// import { Label } from "@/components/ui/label"
-
-// interface BankDetailsFormProps {
-//   initialData?: {
-//     bankName: string
-//     accountNumber: string
-//     accountName: string
-//   }
-//   onSuccess?: (data: any) => void
-// }
-
-// export function BankDetailsForm({ initialData, onSuccess }: BankDetailsFormProps) {
-//   const [accountNumber, setAccountNumber] = useState(initialData?.accountNumber || "")
-//   const [accountName, setAccountName] = useState(initialData?.accountName || "")
-//   const [bankName, setBankName] = useState(initialData?.bankName || "")
-//   const [isLoading, setIsLoading] = useState(false)
-
-//   // Simulate account name lookup when account number is entered
-//   const handleAccountNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-//     const value = e.target.value
-//     setAccountNumber(value)
-
-//     // Simulate API call to get account name
-//     if (value.length === 10) {
-//       setIsLoading(true)
-//       // This would be an API call in a real application
-//       setTimeout(() => {
-//         setAccountName("John Doe")
-//         setIsLoading(false)
-//       }, 800)
-//     } else {
-//       setAccountName("")
-//     }
-//   }
-
-//   const handleSubmit = (e: React.FormEvent) => {
-//     e.preventDefault()
-//     // Handle form submission
-//     const data = { bankName, accountNumber, accountName }
-
-//     // Simulate API call
-//     setIsLoading(true)
-//     setTimeout(() => {
-//       setIsLoading(false)
-//       if (onSuccess) {
-//         onSuccess(data)
-//       }
-//     }, 1000)
-//   }
-
-//   return (
-//     <form onSubmit={handleSubmit} className="space-y-4">
-//       <div className="space-y-2">
-//         <Label htmlFor="bank-name">Bank Name</Label>
-//         <select
-//           id="bank-name"
-//           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-//           value={bankName}
-//           onChange={(e) => setBankName(e.target.value)}
-//           required
-//         >
-//           <option value="">Select a bank</option>
-//           <option value="Access Bank">Access Bank</option>
-//           <option value="Guaranty Trust Bank">Guaranty Trust Bank</option>
-//           <option value="Zenith Bank">Zenith Bank</option>
-//           <option value="First Bank">First Bank</option>
-//         </select>
-//       </div>
-
-//       <div className="space-y-2">
-//         <Label htmlFor="account-number">Account Number</Label>
-//         <Input
-//           id="account-number"
-//           value={accountNumber}
-//           onChange={handleAccountNumberChange}
-//           placeholder="Enter 10-digit account number"
-//           maxLength={10}
-//           required
-//         />
-//       </div>
-
-//       <div className="space-y-2">
-//         <Label htmlFor="account-name">Account Name</Label>
-//         <div className="relative">
-//           <Input
-//             id="account-name"
-//             value={accountName}
-//             readOnly
-//             placeholder="Account name will appear here"
-//             className="bg-muted/30"
-//           />
-//           {isLoading && (
-//             <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-//               <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-//             </div>
-//           )}
-//         </div>
-//         <p className="text-xs text-muted-foreground">
-//           Account name is automatically detected based on the account number
-//         </p>
-//       </div>
-
-//       <DialogFooter>
-//         <Button type="submit" disabled={!accountName || !bankName || accountNumber.length !== 10 || isLoading}>
-//           {isLoading ? "Processing..." : initialData ? "Update Bank Account" : "Add Bank Account"}
-//         </Button>
-//       </DialogFooter>
-//     </form>
-//   )
-// }
-
-// "use client"
-
-// import React, { useState } from "react"
-
-// import { Button } from "@/components/ui/button"
-// import { DialogFooter } from "@/components/ui/dialog"
-// import { Input } from "@/components/ui/input"
-// import { Label } from "@/components/ui/label"
-
-// interface BankDetailsFormProps {
-//   initialData?: {
-//     bankName: string
-//     accountNumber: string
-//     accountName: string
-//   }
-//   onSuccess?: (data: any) => void
-// }
-
-// export function BankDetailsForm({ initialData, onSuccess }: BankDetailsFormProps) {
-//   const [accountNumber, setAccountNumber] = useState(initialData?.accountNumber || "")
-//   const [accountName, setAccountName] = useState(initialData?.accountName || "")
-//   const [bankName, setBankName] = useState(initialData?.bankName || "")
-//   const [isLoading, setIsLoading] = useState(false)
-//   const [error, setError] = useState("")
-//   const [bankCode, setBankCode] = useState("")
-
-  // const handleAccountNumberChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   const value = e.target.value
-  //   setAccountNumber(value)
-  //   setError("")
-
-  //   if (value.length === 10) {
-  //     setIsLoading(true)
-  //     try {
-    
-  //       const response = await fetch(`https://nubapi.com/verify?account_number=${value}`)
-  //       const data = await response.json()
-
-  //       if (data.status === true) {
-  //         setAccountName(data.account_name)
-  //         setBankName(data.Bank_name)
-  //         setError("")
-  //       } else {
-  //         setAccountName("")
-  //         setBankName("")
-  //         setError("Account not found or invalid account number.")
-  //       }
-  //     } catch {
-  //       setAccountName("")
-  //       setBankName("")
-  //       setError("Error verifying account. Please try again later.")
-  //     }
-  //     setIsLoading(false)
-  //   } else {
-  //     setAccountName("")
-  //     setBankName("")
-  //     setError("")
-  //   }
-  // }
-
-
-//   const handleAccountNumberChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-//     const value = e.target.value
-//     setAccountNumber(value)
-//     setError("")
-  
-//     if (value.length === 10) {
-//       setIsLoading(true)
-//       try {
-//         // Optionally pass bank_code if you have it, else omit or pass empty string
-//         const response = await fetch(
-//           `/api/verify-account?account_number=${value}&bank_code=${bankCode || ""}`
-//         )
-//         const data = await response.json()
-  
-//         if (data.status === true) {
-//           setAccountName(data.account_name)
-//           setBankName(data.Bank_name)
-//           setError("")
-//         } else {
-//           setAccountName("")
-//           setBankName("")
-//           setError("Account not found or invalid account number.")
-//         }
-//       } catch {
-//         setAccountName("")
-//         setBankName("")
-//         setError("Error verifying account. Please try again later.")
-//       }
-//       setIsLoading(false)
-//     } else {
-//       setAccountName("")
-//       setBankName("")
-//       setError("")
-//     }
-//   }
-  
-
-//   const handleSubmit = (e: React.FormEvent) => {
-//     e.preventDefault()
-//     if (!accountName || !bankName || accountNumber.length !== 10) {
-//       return
-//     }
-//     const data = { bankName, accountNumber, accountName }
-//     setIsLoading(true)
-//     setTimeout(() => {
-//       setIsLoading(false)
-//       if (onSuccess) {
-//         onSuccess(data)
-//       }
-//     }, 1000)
-//   }
-
-//   return (
-//     <form onSubmit={handleSubmit} className="space-y-4">
-//       <div className="space-y-2">
-//         <Label htmlFor="bank-name">Bank Name</Label>
-//         <select
-//           id="bank-name"
-//           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-//           onChange={(e) => {
-//             setBankName(e.target.value)
-//             // Update bankCode based on selected bank
-//             const bankCodes: Record<string, string> = {
-//               "Access Bank": "044",
-//               "Guaranty Trust Bank": "058",
-//               "Zenith Bank": "057",
-//               "First Bank": "011",
-//             }
-//             setBankCode(bankCodes[e.target.value] || "")
-//           }}
-//           required
-//           disabled
-//         >
-//           <option value="">Select a bank</option>
-//           <option value="Access Bank">Access Bank</option>
-//           <option value="Guaranty Trust Bank">Guaranty Trust Bank</option>
-//           <option value="Zenith Bank">Zenith Bank</option>
-//           <option value="First Bank">First Bank</option>
-//         </select>
-//       </div>
-
-//       <div className="space-y-2">
-//         <Label htmlFor="account-number">Account Number</Label>
-//         <Input
-//           id="account-number"
-//           value={accountNumber}
-//           onChange={handleAccountNumberChange}
-//           placeholder="Enter 10-digit account number"
-//           maxLength={10}
-//           required
-//         />
-//         {error && <div className="text-red-600 text-sm mt-1">{error}</div>}
-//       </div>
-
-//       <div className="space-y-2 relative">
-//         <Label htmlFor="account-name">Account Name</Label>
-//         <Input
-//           id="account-name"
-//           value={accountName}
-//           readOnly
-//           placeholder="Account name will appear here"
-//           className="bg-muted/30"
-//         />
-//         {isLoading && (
-//           <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-//             <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-//           </div>
-//         )}
-//         <p className="text-xs text-muted-foreground">
-//           Account name is automatically detected based on the account number
-//         </p>
-//       </div>
-
-//       <DialogFooter>
-//         <Button
-//           type="submit"
-//           disabled={!accountName || !bankName || accountNumber.length !== 10 || isLoading}
-//         >
-//           {isLoading ? (initialData ? "Updating..." : "Processing...") : initialData ? "Update Bank Account" : "Add Bank Account"}
-//         </Button>
-//       </DialogFooter>
-//     </form>
-//   )
-// }
-
-// "use client"
-
-// import React, { useState, useEffect } from "react"
-
-// import { Button } from "@/components/ui/button"
-// import { DialogFooter } from "@/components/ui/dialog"
-// import { Input } from "@/components/ui/input"
-// import { Label } from "@/components/ui/label"
-
-// interface BankDetailsFormProps {
-//   initialData?: {
-//     bankName: string
-//     accountNumber: string
-//     accountName: string
-//   }
-//   onSuccess?: (data: any) => void
-// }
-
-// const BANKS = [
-//   "Access Bank",
-//   "Guaranty Trust Bank",
-//   "Zenith Bank",
-//   "First Bank",
-//   // Add more banks here if needed
-// ]
-
-// export function BankDetailsForm({ initialData, onSuccess }: BankDetailsFormProps) {
-//   const [bankName, setBankName] = useState(initialData?.bankName || "")
-//   const [accountNumber, setAccountNumber] = useState(initialData?.accountNumber || "")
-//   const [accountName, setAccountName] = useState(initialData?.accountName || "")
-//   const [isLoading, setIsLoading] = useState(false)
-//   const [error, setError] = useState("")
-
-//   // Whenever bankName or accountNumber changes, try to verify
-//   useEffect(() => {
-//     async function verifyAccount() {
-//       setError("")
-//       setAccountName("")
-
-//       if (bankName && accountNumber.length === 10) {
-//         setIsLoading(true)
-//         try {
-//           // const response = await fetch(
-//           //   `/api/verify-account?account_number=${accountNumber}&bank_name=${encodeURIComponent(
-//           //     bankName
-//           //   )}`
-//           // )
-//           // const data = await response.json()
-//           const response = await fetch(
-//             `/api/verify-account?account_number=${accountNumber}&bank_name=${encodeURIComponent(bankName)}`
-//           )
-//           const data = await response.json()
-          
-
-//           if (response.ok && data.status === true) {
-//             setAccountName(data.account_name)
-//             setError("")
-//           } else if (data.error) {
-//             setAccountName("")
-//             setError(data.error)
-//           } else {
-//             setAccountName("")
-//             setError("Account not found or invalid account number.")
-//           }
-//         } catch {
-//           setAccountName("")
-//           setError("Error verifying account. Please try again later.")
-//         }
-//         setIsLoading(false)
-//       } else {
-//         setAccountName("")
-//         setError("")
-//       }
-//     }
-
-//     verifyAccount()
-//   }, [bankName, accountNumber])
-
-//   const handleSubmit = (e: React.FormEvent) => {
-//     e.preventDefault()
-//     if (!bankName || !accountName || accountNumber.length !== 10 || isLoading) return
-
-//     const data = { bankName, accountNumber, accountName }
-//     if (onSuccess) onSuccess(data)
-//   }
-
-//   return (
-//     <form onSubmit={handleSubmit} className="space-y-4">
-//       <div className="space-y-2">
-//         <Label htmlFor="bank-name">Bank Name</Label>
-//         <select
-//           id="bank-name"
-//           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-//           value={bankName}
-//           onChange={(e) => setBankName(e.target.value)}
-//           required
-//         >
-//           <option value="">Select a bank</option>
-//           {BANKS.map((bank) => (
-//             <option key={bank} value={bank}>
-//               {bank}
-//             </option>
-//           ))}
-//         </select>
-//       </div>
-
-//       <div className="space-y-2">
-//         <Label htmlFor="account-number">Account Number</Label>
-//         <Input
-//           id="account-number"
-//           value={accountNumber}
-//           onChange={(e) => {
-//             // Allow only digits
-//             const val = e.target.value.replace(/\D/g, "")
-//             setAccountNumber(val)
-//           }}
-//           placeholder="Enter 10-digit account number"
-//           maxLength={10}
-//           required
-//         />
-//         {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
-//       </div>
-
-//       <div className="space-y-2 relative">
-//         <Label htmlFor="account-name">Account Name</Label>
-//         <Input
-//           id="account-name"
-//           value={accountName}
-//           readOnly
-//           placeholder="Account name will appear here"
-//           className="bg-muted/30"
-//         />
-//         {isLoading && (
-//           <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-//             <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-//           </div>
-//         )}
-//         <p className="text-xs text-muted-foreground">
-//           Account name is automatically detected based on the bank and account number
-//         </p>
-//       </div>
-
-//       <DialogFooter>
-//         <Button
-//           type="submit"
-//           disabled={!bankName || !accountName || accountNumber.length !== 10 || isLoading}
-//         >
-//           {isLoading ? (initialData ? "Updating..." : "Processing...") : initialData ? "Update Bank Account" : "Add Bank Account"}
-//         </Button>
-//       </DialogFooter>
-//     </form>
-//   )
-// }
-
-
-"use client"
-
-import React, { useState, useEffect } from "react"
-
-import { Button } from "@/components/ui/button"
-import { DialogFooter } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-
-interface BankDetailsFormProps {
-  initialData?: {
-    bankName: string
-    accountNumber: string
-    accountName: string
-  }
-  onSuccess?: (data: any) => void
+interface BankAccountFormProps {
+  onSuccess: (data: { bankName: string; accountNumber: string; accountName: string }) => void;
 }
 
-const BANKS = [
-  "Access Bank",
-  "Guaranty Trust Bank",
-  "First City Monument Bank",
-  "Opay",
-  "Monie-Point",
-  "Palm-pay",
-  "Taj Bank",
-  "Globus Bank",
-  "Keystone Bank",
-  "Zenith Bank",
-  "First Bank",
-  "Unity Bank",
-  "Union Bank",
-  "United Bank Of Africa"
-  // Add more banks here if needed
-]
+const BankAccountForm: React.FC<BankAccountFormProps> = ({ onSuccess }) => {
+  const [accountNumber, setAccountNumber] = useState<string>('');
+  const [selectedBankCode, setSelectedBankCode] = useState<string>('');
+  const [bankName, setBankName] = useState<string>('');
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [isFormComplete, setIsFormComplete] = useState<boolean>(false);
 
-export function BankDetailsForm({ initialData, onSuccess }: BankDetailsFormProps) {
-  const [bankName, setBankName] = useState(initialData?.bankName || "")
-  const [accountNumber, setAccountNumber] = useState(initialData?.accountNumber || "")
-  const [accountName, setAccountName] = useState(initialData?.accountName || "")
-  const [isLoading, setIsLoading] = useState(false)
-  const [submitStatus, setSubmitStatus] = useState("")
+  const { accountName, isLoading, error, verifyAccount } = useBankVerification();
+  const { saveAccount } = useAccountContext();
+   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!bankName || !accountName || accountNumber.length !== 10) return
+  useEffect(() => {
+    const loadBanks = async () => {
+      try {
+        const banksData = await fetchBanks();
+        setBanks(banksData);
+      } catch (err) {
+        console.error('Error loading banks:', err);
+      }
+    };
 
-    setIsLoading(true)
-    setSubmitStatus("")
+    loadBanks();
+  }, []);
+
+  useEffect(() => {
+    const isAccountNumberValid = accountNumber.length === 10;
+    const isBankSelected = !!selectedBankCode;
     
-    try {
-      // Create the data object to be submitted
-      const data = { 
-        bankName, 
-        accountNumber, 
-        accountName 
-      }
-      
-      // Simulate a short processing time
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Show success message
-      setSubmitStatus("success")
-      
-      // Call the onSuccess callback with the bank details data
-      if (onSuccess) onSuccess(data)
-      
-      // If it's not an update, reset form fields after successful submission
-      if (!initialData) {
-        setBankName("")
-        setAccountNumber("")
-        setAccountName("")
-      }
-    } catch (error) {
-      console.error("Error submitting bank details:", error)
-      setSubmitStatus("error")
-    } finally {
-      setIsLoading(false)
+    if (isAccountNumberValid && isBankSelected) {
+      verifyAccount(accountNumber, selectedBankCode);
     }
-  }
+  }, [accountNumber, selectedBankCode, verifyAccount]);
+
+  useEffect(() => {
+    if (selectedBankCode && banks.length > 0) {
+      setBankName(getBankNameByCode(banks, selectedBankCode));
+    } else {
+      setBankName('');
+    }
+  }, [selectedBankCode, banks]);
+
+  useEffect(() => {
+    setIsFormComplete(
+      accountNumber.length === 10 && 
+      !!selectedBankCode && 
+      !!accountName && 
+      !isLoading && 
+      !error
+    );
+  }, [accountNumber, selectedBankCode, accountName, isLoading, error]);
+
+  const handleAccountNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setAccountNumber(value);
+  };
+
+  const handleSelectBank = (code: string) => {
+    setSelectedBankCode(code);
+  };
+
+  
+//   const handleSubmit = (e: React.FormEvent) => {
+//   e.preventDefault();
+
+//   if (isFormComplete) {
+//     saveAccount({
+//       accountNumber,
+//       accountName,
+//       bankCode: selectedBankCode,
+//       bankName,
+//     });
+//     // Notify parent of success
+//     onSuccess({
+//       bankName,
+//       accountNumber,
+//       accountName,
+//     });
+//   }
+// };
+const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (isFormComplete) {
+      saveAccount({
+        accountNumber,
+        accountName,
+        bankCode: selectedBankCode,
+        bankName,
+      });
+      onSuccess({
+        bankName,
+        accountNumber,
+        accountName,
+      });
+      toast({
+        title: "Bank saved successfully",
+        variant: "default",
+      });
+      // Reset form fields
+      setAccountNumber("");
+      setSelectedBankCode("");
+      setBankName("");
+      // Optionally reset accountName if your hook allows it
+      // setAccountName("");
+    }
+  };
+
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="bank-name">Bank Name</Label>
-        <select
-          id="bank-name"
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          value={bankName}
-          onChange={(e) => setBankName(e.target.value)}
-          required
-        >
-          <option value="">Select a bank</option>
-          {BANKS.map((bank) => (
-            <option key={bank} value={bank}>
-              {bank}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="account-number">Account Number</Label>
-        <Input
-          id="account-number"
-          value={accountNumber}
-          onChange={(e) => {
-            // Allow only digits
-            const val = e.target.value.replace(/\D/g, "")
-            setAccountNumber(val)
-          }}
-          placeholder="Enter 10-digit account number"
-          maxLength={10}
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="account-name">Account Name</Label>
-        <Input
-          id="account-name"
-          value={accountName}
-          onChange={(e) => setAccountName(e.target.value)}
-          placeholder="Enter account name"
-          required
-        />
-      </div>
-      
-      {submitStatus === "success" && (
-        <div className="bg-green-50 border border-green-200 rounded-md p-3">
-          <p className="text-green-600 text-sm font-medium">
-            Bank details {initialData ? "updated" : "added"} successfully!
-          </p>
-        </div>
-      )}
-      
-      {submitStatus === "error" && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-3">
-          <p className="text-red-600 text-sm font-medium">
-            There was an error {initialData ? "updating" : "adding"} bank details. Please try again.
-          </p>
-        </div>
-      )}
-
-      <DialogFooter>
-        <Button
-          type="submit"
-          disabled={!bankName || !accountName || accountNumber.length !== 10 || isLoading}
-        >
-          {isLoading ? (
-            <span className="flex items-center gap-2">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></div>
-              {initialData ? "Updating..." : "Adding..."}
-            </span>
-          ) : (
-            initialData ? "Update Bank Account" : "Add Bank Account"
+    <div className="w-full max-w-md mx-auto">
+      <form 
+        onSubmit={handleSubmit}
+        className="bg-gray-900 shadow-xl rounded-xl p-6 border border-gray-800"
+      >
+        <h2 className="text-2xl font-semibold text-white mb-6">Bank Account Details</h2>
+        
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <label htmlFor="bank" className="block text-sm font-medium text-gray-300">
+              Select Bank
+            </label>
+            <BankSelector 
+              selectedBank={selectedBankCode} 
+              onSelectBank={handleSelectBank}
+              disabled={isLoading}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="accountNumber" className="block text-sm font-medium text-gray-300">
+              Account Number
+            </label>
+            <input
+              type="text"
+              id="accountNumber"
+              value={accountNumber}
+              onChange={handleAccountNumberChange}
+              placeholder="Enter 10-digit account number"
+              disabled={isLoading}
+              className={`
+                w-full p-3 border rounded-lg transition-all duration-200 bg-gray-800 text-white
+                ${accountNumber.length === 10 ? 'border-green-500' : 'border-gray-700'}
+                ${isLoading ? 'bg-gray-700' : 'bg-gray-800'}
+                focus:outline-none focus:ring-2 focus:ring-green-500
+              `}
+            />
+            {accountNumber && accountNumber.length !== 10 && (
+              <p className="text-sm text-amber-500">Account number must be 10 digits</p>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="accountName" className="block text-sm font-medium text-gray-300">
+              Account Name
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                id="accountName"
+                value={accountName}
+                readOnly
+                placeholder="Account name will appear here"
+                className={`
+                  w-full p-3 border rounded-lg bg-gray-800 text-white
+                  ${accountName ? 'border-green-500' : 'border-gray-700'}
+                `}
+              />
+              {isLoading && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <Loader2 size={20} className="animate-spin text-green-500" />
+                </div>
+              )}
+              {accountName && !isLoading && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <Check size={20} className="text-green-500" />
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="bankName" className="block text-sm font-medium text-gray-300">
+              Bank Name
+            </label>
+            <input
+              type="text"
+              id="bankName"
+              value={bankName}
+              readOnly
+              placeholder="Bank name will appear here"
+              className={`
+                w-full p-3 border rounded-lg bg-gray-800 text-white
+                ${bankName ? 'border-green-500' : 'border-gray-700'}
+              `}
+            />
+          </div>
+          
+          {error && (
+            <div className="p-3 bg-red-900/50 border border-red-800 rounded-lg">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
           )}
-        </Button>
-      </DialogFooter>
-    </form>
-  )
-}
+          
+          <Button
+            type="submit"
+            disabled={!isFormComplete}
+            className={`
+              w-full py-3 px-4 rounded-lg font-medium text-white
+              transition-all duration-200 flex items-center justify-center
+              ${isFormComplete 
+                ? 'bg-green-600 hover:bg-green-700' 
+                : 'bg-gray-700 cursor-not-allowed'
+              }
+            `}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 size={20} className="animate-spin mr-2" />
+                Verifying...
+              </>
+            ) : (
+              'Save Account'
+            )}
+          </Button>
+        </div>
+          <ToastContainer position="top-right" />
+      </form>
+    </div>
+  );
+};
+
+export default BankAccountForm;
+
