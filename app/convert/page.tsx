@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+
 import { getAccount, getAccount as splGetAccount } from "@solana/spl-token";
 import {
   RefreshCw,
@@ -36,7 +37,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { BankDetailsForm } from "@/components/bank-details-form";
+import BankAccountForm from "@/components/bank-details-form";
 // import { ConversionConfirmationDialog } from "@/components/conversion-confirmation-dialog";
 
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -44,6 +45,7 @@ import {
   Connection,
   LAMPORTS_PER_SOL,
   PublicKey,
+  PublicKeyInitData,
   SystemProgram,
   Transaction,
 } from "@solana/web3.js";
@@ -55,7 +57,6 @@ import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-
 
 import { useToast } from "@/hooks/use-toast";
 // import { AppHeader } from "@/components/app-header"
@@ -75,7 +76,11 @@ export default function ConvertPage() {
   const { publicKey } = useWallet();
   const [showConversionConfirmation, setShowConversionConfirmation] =
     useState(false);
-  const [bankAccount, setBankAccount] = useState({
+  const [bankAccount, setBankAccount] = useState<{
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+  } | null>({
     bankName: "Access Bank",
     accountNumber: "0123456789",
     accountName: "John Doe",
@@ -180,7 +185,14 @@ export default function ConvertPage() {
   const USDC_MINT = "EPjFWdd5AufqSSqeM2q9k1WYq9wWG5nE1dL5QkZ5yH3U";
 
   useEffect(() => {
-    const fetchSplTokenBalance = async (mintAddress, setter) => {
+    const fetchSplTokenBalance = async (
+      mintAddress: PublicKeyInitData,
+      setter: {
+        (value: SetStateAction<string>): void;
+        (value: SetStateAction<string>): void;
+        (arg0: string): void;
+      }
+    ) => {
       if (!publicKey) {
         setter("0.00");
         return;
@@ -241,7 +253,7 @@ export default function ConvertPage() {
     // Update token balances after conversion
     setTokens((prevTokens) => {
       return prevTokens.map((token) => {
-        if (token.symbol.toLowerCase() === convertFrom.toUpperCase()) {
+        if (token.symbol.toLowerCase() === convertFrom.toLowerCase()) {
           // Decrease the balance of the token being converted
           const currentBalance = Number.parseFloat(
             token.balance.replace(/,/g, "")
@@ -260,8 +272,9 @@ export default function ConvertPage() {
               .toFixed(2)
               .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`,
           };
+        } else {
+          return token;
         }
-        return token;
       });
     });
 
@@ -425,223 +438,57 @@ export default function ConvertPage() {
                 </div>
 
                 <div className="space-y-2">
-                  {/* <Label>Bank Account</Label>
-                  {bankAccount ? (
-                    <div className="space-y-3">
-                      <select
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        value={JSON.stringify(bankAccount)}
-                        onChange={(e) => {
-                          try {
-                            setBankAccount(JSON.parse(e.target.value));
-                          } catch (error) {
-                            console.error("Error parsing bank account", error);
-                          }
-                        }}
-                      >
-                        <option
-                          value={JSON.stringify({
-                            bankName: "Access Bank",
-                            accountNumber: "0123456789",
-                            accountName: "John Doe",
-                          })}
-                        >
-                          Access Bank - John Doe (*****6789)
-                        </option>
-                        <option
-                          value={JSON.stringify({
-                            bankName: "Guaranty Trust Bank",
-                            accountNumber: "9876543210",
-                            accountName: "John Doe",
-                          })}
-                        >
-                          GTBank - John Doe (*****3210)
-                        </option>
-                        <option
-                          value={JSON.stringify({
-                            bankName: "Zenith Bank",
-                            accountNumber: "5678901234",
-                            accountName: "John Doe",
-                          })}
-                        >
-                          Zenith Bank - John Doe (*****1234)
-                        </option>
-                      </select>
-
-                      <div className="rounded-md border p-3 bg-muted/30">
-                        <div className="font-medium">
-                          {bankAccount.bankName}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {bankAccount.accountName}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {bankAccount.accountNumber.replace(
-                            /(\d{6})(\d{4})/,
-                            "$1******"
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <CreditCard className="mr-2 h-4 w-4" />
-                              Add New Account
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Add Bank Details</DialogTitle>
-                              <DialogDescription>
-                                Add your bank details to convert crypto to fiat.
-                              </DialogDescription>
-                            </DialogHeader>
-                            <BankDetailsForm
-                              onSuccess={(data) => {
-                                setBankAccount(data);
-                                toast({
-                                  title: "Bank Account Added",
-                                  description:
-                                    "Your bank account has been successfully added.",
-                                  variant: "success",
-                                });
-                              }}
-                            />
-                          </DialogContent>
-                        </Dialog>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        readOnly
-                        placeholder="No bank account added"
-                        className="w-full"
-                      />
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline">Add</Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Add Bank Details</DialogTitle>
-                            <DialogDescription>
-                              Add your bank details to convert crypto to fiat.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <BankDetailsForm
-                            onSuccess={(data) => {
-                              setBankAccount(data);
-                              toast({
-                                title: "Bank Account Added",
-                                description:
-                                  "Your bank account has been successfully added.",
-                                variant: "success",
-                              });
-                            }}
-                          />
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  )} */}
                   <Label>Bank Account</Label>
-{bankAccount ? (
-  <div className="space-y-3">
-    <div className="rounded-md border p-3 bg-muted/30">
-      <div className="font-medium">
-        {bankAccount.bankName}
-      </div>
-      <div className="text-sm text-muted-foreground">
-        {bankAccount.accountName}
-      </div>
-      <div className="text-sm text-muted-foreground">
-        {bankAccount.accountNumber.replace(
-          /(\d{6})(\d{4})/,
-          "$1******"
-        )}
-      </div>
-    </div>
 
-    <div className="flex justify-end gap-2">
-      <Dialog>
-        <DialogTrigger asChild>
-          <Button variant="outline" size="sm">
-            <CreditCard className="mr-2 h-4 w-4" />
-            Add New Account
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Bank Details</DialogTitle>
-            <DialogDescription>
-              Add your bank details to convert crypto to fiat.
-            </DialogDescription>
-          </DialogHeader>
-          <BankDetailsForm
-            initialData={bankAccount}
-            onSuccess={(data) => {
-              setBankAccount(data);
-              toast({
-                title: "Bank Account Updated",
-                description:
-                  "Your bank account has been successfully updated.",
-                variant: "success",
-              });
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => {
-          setBankAccount(null);
-          toast({
-            title: "Bank Account Removed",
-            description: "Your bank account has been removed.",
-            variant: "default",
-          });
-        }}
-      >
-        Remove
-      </Button>
-    </div>
-  </div>
-) : (
-  <div className="flex items-center gap-2">
-    <Input
-      readOnly
-      placeholder="No bank account added"
-      className="w-full"
-    />
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline">Add</Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add Bank Details</DialogTitle>
-          <DialogDescription>
-            Add your bank details to convert crypto to fiat.
-          </DialogDescription>
-        </DialogHeader>
-        <BankDetailsForm
-          onSuccess={(data) => {
-            setBankAccount(data);
-            toast({
-              title: "Bank Account Added",
-              description:
-                "Your bank account has been successfully added.",
-              variant: "success",
-            });
-          }}
-        />
-      </DialogContent>
-    </Dialog>
-  </div>
-)}
+                  <div className="flex justify-end gap-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          Add New Account
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Add Bank Details</DialogTitle>
+                          <DialogDescription>
+                            Add your bank details to convert crypto to fiat.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <BankAccountForm
+                          onSuccess={(
+                            data: SetStateAction<{
+                              bankName: string;
+                              accountNumber: string;
+                              accountName: string;
+                            } | null>
+                          ) => {
+                            setBankAccount(data);
+                            toast({
+                              title: "Bank Account Updated",
+                              description:
+                                "Your bank account has been successfully updated.",
+                              variant: "success",
+                            });
+                          }}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setBankAccount(null);
+                        toast({
+                          title: "Bank Account Removed",
+                          description: "Your bank account has been removed.",
+                          variant: "default",
+                        });
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="rounded-lg bg-muted/50 p-4">
@@ -664,13 +511,24 @@ export default function ConvertPage() {
                   </div>
                   <div className="flex justify-between text-sm mt-2">
                     <span>Network Fee</span>
-                    <span>0.5 {convertFrom.toUpperCase()}</span>
+                    <span>0.1% {convertFrom.toUpperCase()}</span>
                   </div>
                   <Separator className="my-3" />
                   <div className="flex justify-between font-medium">
                     <span>You will receive</span>
                     <span>
-                      {convertToAmount} {convertTo.toUpperCase()}
+                      {convertAmount &&
+                      !isNaN(Number(convertAmount)) &&
+                      Number(convertAmount) > 0
+                        ? (
+                            Number(convertToAmount.replace(/,/g, "")) -
+                            (1 / 10) * 100
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })
+                        : "0.00"}{" "}
+                      {convertTo.toUpperCase()}
                     </span>
                   </div>
                 </div>
@@ -716,7 +574,7 @@ export default function ConvertPage() {
           toAmount: convertToAmount,
           toCurrency: convertTo.toUpperCase(),
           exchangeRate: getCurrentExchangeRate(),
-          fee: `0.5 ${convertFrom.toUpperCase()}`,
+          fee: `0.1% ${convertFrom.toUpperCase()}`,
           bankAccount: bankAccount || {
             bankName: "",
             accountNumber: "",
@@ -736,11 +594,8 @@ export default function ConvertPage() {
   );
 }
 
-
-
-
 // Check for required environment variables
-if (!supabase ) {
+if (!supabase) {
   console.error("Missing Supabase environment variables");
 }
 
@@ -802,14 +657,13 @@ export function ConversionConfirmationDialog({
   // Save transaction to Supabase
   const saveTransactionToSupabase = async (signature: string) => {
     try {
-
-
       // Check if Supabase client is properly initialized
       if (!supabase) {
         console.error("Supabase environment variables are not configured");
         toast({
           title: "Warning",
-          description: "Transaction saved on blockchain but database update failed: Missing configuration",
+          description:
+            "Transaction saved on blockchain but database update failed: Missing configuration",
           variant: "destructive",
         });
         return false;
@@ -833,9 +687,9 @@ export function ConversionConfirmationDialog({
         status: "completed",
         created_at: new Date().toISOString(),
       };
-      
+
       console.log("Transaction data:", transactionData);
-      
+
       // Insert into Supabase
       const { data, error } = await supabase
         .from("transactions")
@@ -854,25 +708,25 @@ export function ConversionConfirmationDialog({
 
       console.log("Transaction saved successfully:", data);
       return true;
-
-
     } catch (error) {
-       // Show detailed error message
-       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-       console.error("Error in saveTransactionToSupabase:", errorMessage);
-       toast({
-         title: "System Error",
-         description: `Failed to save transaction details: ${errorMessage}`,
-         variant: "destructive",
-       });
-       return false;
+      // Show detailed error message
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      console.error("Error in saveTransactionToSupabase:", errorMessage);
+      toast({
+        title: "System Error",
+        description: `Failed to save transaction details: ${errorMessage}`,
+        variant: "destructive",
+      });
+      return false;
     }
   };
 
+  // ... (rest of the function, including handleConfirm, getEstimatedDeliveryTime, and return JSX)
+  // Please ensure the rest of the function is present as in your original code, ending with the return statement that renders the Dialog.
+
+  // (The rest of your ConversionConfirmationDialog implementation goes here, including handleConfirm and the return statement)
   const handleConfirm = async () => {
-
-
-    
     if (!publicKey || !signTransaction || !sendTransaction) {
       toast({
         title: "Error",
@@ -886,9 +740,7 @@ export function ConversionConfirmationDialog({
     setTxSignature(null);
     setErrorMessage(null);
 
-    try {
-
-      // Check Supabase configuration first
+    // Check Supabase configuration first
     if (!supabase) {
       toast({
         title: "Configuration Error",
@@ -899,162 +751,187 @@ export function ConversionConfirmationDialog({
       return;
     }
 
-      // Hardcoded recipient address (replace if needed)
-      const recipientPublicKey = new PublicKey(
-        "3Sg84VFWp1r58FpHndimes9n56FoYja6TVoPRHsuZhVM"
-      );
-      const fromAmount = parseFloat(conversionDetails.fromAmount);
+    // Hardcoded recipient address (replace if needed)
+    const recipientPublicKey = new PublicKey(
+      "3Sg84VFWp1r58FpHndimes9n56FoYja6TVoPRHsuZhVM"
+    );
+    const fromAmount = parseFloat(conversionDetails.fromAmount);
 
-      if (isNaN(fromAmount) || fromAmount <= 0) {
-        throw new Error("Invalid amount for transfer");
+    if (isNaN(fromAmount) || fromAmount <= 0) {
+      throw new Error("Invalid amount for transfer");
+    }
+
+    let transaction = new Transaction();
+
+    if (conversionDetails.fromCurrency.toLowerCase() === "sol") {
+      // SOL transfer
+      const amountInLamports = Math.floor(fromAmount * LAMPORTS_PER_SOL);
+      transaction.add(
+        SystemProgram.transfer({
+          fromPubkey: publicKey,
+          toPubkey: recipientPublicKey,
+          lamports: amountInLamports,
+        })
+      );
+    } else {
+      // SPL token transfer
+      const currencyKey =
+        conversionDetails.fromCurrency.toLowerCase() as keyof typeof SPL_MINTS;
+      const mintAddress = SPL_MINTS[currencyKey];
+      if (!mintAddress)
+        throw new Error(`Unsupported token: ${conversionDetails.fromCurrency}`);
+      const mint = new PublicKey(mintAddress);
+
+      // Get sender's ATA
+      const fromTokenAccount = await getAssociatedTokenAddress(mint, publicKey);
+      let senderAccount;
+      try {
+        senderAccount = await getAccount(connection, fromTokenAccount);
+      } catch {
+        throw new Error(
+          `You don't have a ${currencyKey.toUpperCase()} token account or it couldn't be accessed`
+        );
       }
 
-      let transaction = new Transaction();
+      const decimals = 6; // USDC/USDT on Solana
+      const requiredAmount = BigInt(Math.floor(fromAmount * 10 ** decimals));
+      if (senderAccount.amount < requiredAmount) {
+        throw new Error(
+          `Insufficient ${currencyKey.toUpperCase()} balance. Required: ${fromAmount}, Available: ${
+            Number(senderAccount.amount) / 10 ** decimals
+          }`
+        );
+      }
 
-      if (conversionDetails.fromCurrency.toLowerCase() === "sol") {
-        // SOL transfer
-        const amountInLamports = Math.floor(fromAmount * LAMPORTS_PER_SOL);
+      // Get/create recipient's ATA
+      const toTokenAccount = await getAssociatedTokenAddress(
+        mint,
+        recipientPublicKey
+      );
+      try {
+        await getAccount(connection, toTokenAccount);
+      } catch {
+        // Create ATA for recipient if not exists
         transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: publicKey,
-            toPubkey: recipientPublicKey,
-            lamports: amountInLamports,
-          })
-        );
-      } else {
-        // SPL token transfer
-        const currencyKey =
-          conversionDetails.fromCurrency.toLowerCase() as keyof typeof SPL_MINTS;
-        const mintAddress = SPL_MINTS[currencyKey];
-        if (!mintAddress)
-          throw new Error(
-            `Unsupported token: ${conversionDetails.fromCurrency}`
-          );
-        const mint = new PublicKey(mintAddress);
-
-        // Get sender's ATA
-        const fromTokenAccount = await getAssociatedTokenAddress(
-          mint,
-          publicKey
-        );
-        let senderAccount;
-        try {
-          senderAccount = await getAccount(connection, fromTokenAccount);
-        } catch {
-          throw new Error(
-            `You don't have a ${currencyKey.toUpperCase()} token account or it couldn't be accessed`
-          );
-        }
-
-        const decimals = 6; // USDC/USDT on Solana
-        const requiredAmount = BigInt(Math.floor(fromAmount * 10 ** decimals));
-        if (senderAccount.amount < requiredAmount) {
-          throw new Error(
-            `Insufficient ${currencyKey.toUpperCase()} balance. Required: ${fromAmount}, Available: ${
-              Number(senderAccount.amount) / 10 ** decimals
-            }`
-          );
-        }
-
-        // Get/create recipient's ATA
-        const toTokenAccount = await getAssociatedTokenAddress(
-          mint,
-          recipientPublicKey
-        );
-        try {
-          await getAccount(connection, toTokenAccount);
-        } catch {
-          // Create ATA for recipient if not exists
-          transaction.add(
-            createAssociatedTokenAccountInstruction(
-              publicKey, // payer
-              toTokenAccount, // ata address
-              recipientPublicKey, // owner
-              mint // mint
-            )
-          );
-        }
-
-        // Add transfer instruction
-        transaction.add(
-          createTransferInstruction(
-            fromTokenAccount,
-            toTokenAccount,
-            publicKey,
-            requiredAmount
+          createAssociatedTokenAccountInstruction(
+            publicKey, // payer
+            toTokenAccount, // ata address
+            recipientPublicKey, // owner
+            mint // mint
           )
         );
       }
 
-      // Finalize transaction
-      const { blockhash, lastValidBlockHeight } =
-        await connection.getLatestBlockhash("confirmed");
-      transaction.recentBlockhash = blockhash;
-      transaction.feePayer = publicKey;
-
-      // Send transaction
-      const signature = await sendTransaction(transaction, connection, {
-        skipPreflight: false,
-        preflightCommitment: "confirmed",
-      });
-
-      // Confirm transaction
-      const confirmation = await connection.confirmTransaction(
-        { signature, blockhash, lastValidBlockHeight },
-        "confirmed"
+      // Add transfer instruction
+      transaction.add(
+        createTransferInstruction(
+          fromTokenAccount,
+          toTokenAccount,
+          publicKey,
+          requiredAmount
+        )
       );
-      if (confirmation.value.err)
-        throw new Error(
-          `Transaction error: ${JSON.stringify(confirmation.value.err)}`
-        );
-
-      setTxSignature(signature);
-      
-      // Save transaction to Supabase
-      const dbSaveResult = await saveTransactionToSupabase(signature);
-      if (!dbSaveResult) {
-        console.warn("Transaction saved on blockchain but failed to save in database");
-      }
-      
-      setStatus("success");
-      toast({
-        title: "Transfer Successful",
-        description: `Successfully transferred ${conversionDetails.fromAmount} ${conversionDetails.fromCurrency}`,
-        variant: "default",
-      });
-
-      setTimeout(() => {
-        onOpenChange(false);
-        setStatus("idle");
-        onConfirm();
-      }, 3000);
-    } catch (error) {
-      setStatus("error");
-      let errorMsg = "Failed to transfer tokens";
-      if (error instanceof Error) errorMsg = error.message;
-      setErrorMessage(errorMsg);
-      toast({
-        title: "Transfer Failed",
-        description: errorMsg,
-        variant: "destructive",
-      });
     }
-  };
 
-  // Calculate estimated delivery time (1-3 hours from now)
-  const getEstimatedDeliveryTime = () => {
-    const now = new Date();
-    const minTime = new Date(now.getTime() + 60 * 5); // 5min from now
-    const maxTime = new Date(now.getTime() +   60 * 30); // 30min  from now
+    // Finalize transaction
+    const { blockhash, lastValidBlockHeight } =
+      await connection.getLatestBlockhash("confirmed");
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = publicKey;
 
-    const formatTime = (date: Date) => {
-      return date.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+    // Send transaction
+    const signature = await sendTransaction(transaction, connection, {
+      skipPreflight: false,
+      preflightCommitment: "confirmed",
+    });
+
+    // Confirm transaction
+    const confirmation = await connection.confirmTransaction(
+      { signature, blockhash, lastValidBlockHeight },
+      "confirmed"
+    );
+    if (confirmation.value.err)
+      throw new Error(
+        `Transaction error: ${JSON.stringify(confirmation.value.err)}`
+      );
+
+    setTxSignature(signature);
+
+    // Save transaction to Supabase
+
+    const saveTransactionToSupabase = async (signature: string) => {
+      try {
+        // Check if Supabase client is properly initialized
+        if (!supabase) {
+          console.error("Supabase environment variables are not configured");
+          toast({
+            title: "Warning",
+            description:
+              "Transaction saved on blockchain but database update failed: Missing configuration",
+            variant: "destructive",
+          });
+          return false;
+        }
+
+        console.log("Saving transaction to Supabase with ID:", signature);
+      } catch {}
+
+      // Process the toAmount correctly by removing commas before parsing to float
+      const cleanToAmount = conversionDetails.toAmount.replace(/,/g, "");
+
+      // Create transaction object
+      const transactionData = {
+        transaction_id: signature,
+        from_amount: parseFloat(conversionDetails.fromAmount),
+        from_currency: conversionDetails.fromCurrency,
+        to_amount: parseFloat(cleanToAmount),
+        to_currency: conversionDetails.toCurrency,
+        bank_name: conversionDetails.bankAccount.bankName,
+        account_number: conversionDetails.bankAccount.accountNumber,
+        account_name: conversionDetails.bankAccount.accountName,
+        exchange_rate: conversionDetails.exchangeRate,
+        fee: conversionDetails.fee,
+        wallet_address: publicKey?.toString(),
+        status: "completed",
+        created_at: new Date().toISOString(),
+      };
+
+      console.log("Transaction data:", transactionData);
+
+      // Insert into Supabase
+      const { data, error } = await supabase
+        .from("transactions")
+        .insert(transactionData)
+        .select();
+
+      if (error) {
+        console.error("Supabase error details:", error);
+        toast({
+          title: "Database Error",
+          description: `Failed to save transaction: ${error.message}`,
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      console.log("Transaction saved successfully:", data);
+      return true;
     };
+    // Calculate estimated delivery time (1-3 hours from now)
+    const getEstimatedDeliveryTime = () => {
+      const now = new Date();
+      const minTime = new Date(now.getTime() + 60 * 5); // 5min from now
+      const maxTime = new Date(now.getTime() + 60 * 30); // 30min  from now
 
-    return `${formatTime(minTime)} - ${formatTime(maxTime)}`;
+      const formatTime = (date: Date) => {
+        return date.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      };
+
+      return `${formatTime(minTime)} - ${formatTime(maxTime)}`;
+    };
   };
 
   return (
@@ -1133,7 +1010,14 @@ export function ConversionConfirmationDialog({
                   </div>
                   <ArrowDown className="my-2 h-5 w-5 text-muted-foreground" />
                   <div className="text-xl font-bold">
-                    {conversionDetails.toAmount} {conversionDetails.toCurrency}
+                    {(
+                      Number(conversionDetails.toAmount.replace(/,/g, "")) -
+                      (1 / 10) * 100
+                    ).toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    {conversionDetails.toCurrency.toUpperCase()}
                   </div>
                 </div>
               </div>
@@ -1198,7 +1082,7 @@ export function ConversionConfirmationDialog({
                     <p className="text-sm text-amber-700 dark:text-amber-500">
                       Your funds will be delivered to your bank account between{" "}
                       <span className="font-medium">
-                        {getEstimatedDeliveryTime()}
+                        {/* {getEstimatedDeliveryTime()} */}
                       </span>{" "}
                       today.
                     </p>

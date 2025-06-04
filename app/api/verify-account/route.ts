@@ -81,56 +81,56 @@
 
 
 // app/api/verify-account/route.ts
-import { NextResponse } from "next/server"
+// import { NextResponse } from "next/server"
 
-const BANK_CODES: Record<string, string> = {
-  "Access Bank": "044",
-  "Guaranty Trust Bank": "058",
-  "Zenith Bank": "057",
-  "First Bank": "011",
-  // Add other banks and their codes here
-}
+// const BANK_CODES: Record<string, string> = {
+//   "Access Bank": "044",
+//   "Guaranty Trust Bank": "058",
+//   "Zenith Bank": "057",
+//   "First Bank": "011",
+//   // Add other banks and their codes here
+// }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const account_number = searchParams.get("account_number")
-  const bank_name = searchParams.get("bank_name")
+// export async function GET(request: Request) {
+//   const { searchParams } = new URL(request.url)
+//   const account_number = searchParams.get("account_number")
+//   const bank_name = searchParams.get("bank_name")
 
-  if (!account_number) {
-    return NextResponse.json({ error: "account_number is required" }, { status: 400 })
-  }
-  if (!bank_name) {
-    return NextResponse.json({ error: "bank_name is required" }, { status: 400 })
-  }
+//   if (!account_number) {
+//     return NextResponse.json({ error: "account_number is required" }, { status: 400 })
+//   }
+//   if (!bank_name) {
+//     return NextResponse.json({ error: "bank_name is required" }, { status: 400 })
+//   }
 
-  const bank_code = BANK_CODES[bank_name]
-  if (!bank_code) {
-    return NextResponse.json({ error: "Invalid bank name" }, { status: 400 })
-  }
+//   const bank_code = BANK_CODES[bank_name]
+//   if (!bank_code) {
+//     return NextResponse.json({ error: "Invalid bank name" }, { status: 400 })
+//   }
 
-  try {
-    const response = await fetch(
-      `http://nubapi.test/api/verify?account_number=${account_number}&bank_code=${bank_code}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization:
-            "bOX1c8gTI0wHdZgoiAPnic350QFycDwYrvRmCUxY212dab0b",
-        },
-      }
-    )
+//   try {
+//     const response = await fetch(
+//       `http://nubapi.com/api/verify?account_number=${account_number}&bank_code=${bank_code}`,
+//       {
+//         method: "GET",
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization:
+//             "b2UN6d9i5z9zoYvZNEkU0NipBDojxgAfFi6ufIld76b7cba0",
+//         },
+//       }
+//     )
 
-    if (!response.ok) {
-      return NextResponse.json({ error: "Failed to fetch from NubAPI" }, { status: response.status })
-    }
+//     if (!response.ok) {
+//       return NextResponse.json({ error: "Failed to fetch from NubAPI" }, { status: response.status })
+//     }
 
-    const data = await response.json()
-    return NextResponse.json(data)
-  } catch (error) {
-    console.error("Error fetching NubAPI:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+//     const data = await response.json()
+//     return NextResponse.json(data)
+//   } catch (error) {
+//     console.error("Error fetching NubAPI:", error)
+//     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+//   }
+// }
 
 

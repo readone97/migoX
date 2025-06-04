@@ -65,7 +65,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { BankDetailsForm } from "@/components/bank-details-form";
+import BankAccountForm from "@/components/bank-details-form";
 import { TokenCard } from "@/components/token-card";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -77,6 +77,9 @@ import React from "react";
 import { useAuth } from "@/context/auth-context";
 import { getConnection } from "@/lib/jupiter";
 import { cn } from "@/lib/utils";
+import BankDetailsForm from "@/components/bank-details-form";
+import { ToastContainer } from "react-toastify";
+import { supabase } from "@/lib/supabase/client";
 
 const TOKEN_LIST_URL =
   "https://cdn.jsdelivr.net/gh/solana-labs/token-list@main/src/tokens/solana.tokenlist.json";
@@ -229,6 +232,114 @@ export default function DashboardPage() {
       router.push("/login");
     }
   }, [connected, publicKey, router]);
+
+  const saveBankAccountToDb = async (data: {
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+  }) => {
+    if (!publicKey) return { error: "No wallet connected" };
+
+    const walletAddress = publicKey.toString();
+
+    try {
+      // First, try to update existing record
+      const { data: updateData, error: updateError } = await supabase
+        .from("profiles")
+        .update({
+          bank_name: data.bankName,
+          account_number: data.accountNumber,
+          account_name: data.accountName,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", walletAddress)
+        .select();
+
+      // If no rows were updated, create a new record
+      if (!updateError && updateData && updateData.length === 0) {
+        const { error: insertError } = await supabase.from("profiles").insert({
+          id: walletAddress,
+          bank_name: data.bankName,
+          account_number: data.accountNumber,
+          account_name: data.accountName,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+        return { error: insertError };
+      }
+
+      return { error: updateError };
+    } catch (error) {
+      console.error("Database operation failed:", error);
+      return { error: error };
+    }
+  };
+
+  // Remove bank details from Supabase
+  const removeBankAccountFromDb = async () => {
+    if (!publicKey) return { error: "No wallet connected" };
+
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          bank_name: null,
+          account_number: null,
+          account_name: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", publicKey.toString());
+
+      return { error };
+    } catch (error) {
+      console.error("Failed to remove bank details:", error);
+      return { error };
+    }
+  };
+
+  // 2. Update the fetch bank details function:
+
+  // Fetch bank details from Supabase on load
+  useEffect(() => {
+    const fetchBankAccount = async () => {
+      if (!publicKey) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("bank_name, account_number, account_name")
+          .eq("id", publicKey.toString())
+          .single();
+
+        if (error) {
+          // If no record exists, that's okay - just set empty values
+          if (error.code === "PGRST116") {
+            setBankAccount({
+              bankName: "",
+              accountNumber: "",
+              accountName: "",
+            });
+          } else {
+            console.error("Error fetching bank details:", error);
+          }
+          return;
+        }
+
+        if (data) {
+          setBankAccount({
+            bankName: data.bank_name || "",
+            accountNumber: data.account_number || "",
+            accountName: data.account_name || "",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch bank account:", error);
+      }
+    };
+
+    fetchBankAccount();
+  }, [publicKey]);
 
   // Simulate real-time updates
   useEffect(() => {
@@ -462,7 +573,6 @@ export default function DashboardPage() {
       setSolBalance(null);
     }
   }, [publicKey, connected, toast]);
-
   //spl-tokens
   useEffect(() => {
     fetch(TOKEN_LIST_URL)
@@ -782,51 +892,25 @@ export default function DashboardPage() {
               ))}
             </nav>
           </div>
-
-<div className="mb-8 space-y-4 md:space-y-0 md:flex md:items-center md:justify-between">
-  <h1 className="text-3xl font-bold">Dashboard</h1>
-  <div className="flex flex-col sm:flex-row gap-3">
-    <Button onClick={handleNavigateToSwap} className="w-full sm:w-auto">
-      <RefreshCw className="mr-2 h-4 w-4" />
-      Swap Tokens
-    </Button>
-    <Button onClick={handleNavigateToConvert} className="w-full sm:w-auto">
-      <RefreshCw className="mr-2 h-4 w-4" />
-      Convert Tokens
-    </Button>
-    {/* <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="w-full sm:w-auto">
-          <CreditCard className="mr-2 h-4 w-4" />
-          Add Bank Details
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add Bank Details</DialogTitle>
-          <DialogDescription>
-            Add your bank details to convert crypto to fiat.
-          </DialogDescription>
-        </DialogHeader>
-        <BankDetailsForm
-          onSuccess={() => {
-            toast({
-              title: "Bank Account Added",
-              description:
-                "Your bank account has been successfully added.",
-              variant: "default",
-            });
-          }}
-        />
-      </DialogContent>
-    </Dialog> */}
-
-    {/* <Button>
-      <Wallet className="mr-2 h-4 w-4" />
-      Manage Wallet
-    </Button> */}
-  </div>
-</div>
+          <div className="mb-8 space-y-4 md:space-y-0 md:flex md:items-center md:justify-between">
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={handleNavigateToSwap}
+                className="w-full sm:w-auto"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Swap Tokens
+              </Button>
+              <Button
+                onClick={handleNavigateToConvert}
+                className="w-full sm:w-auto"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Convert Tokens
+              </Button>
+            </div>
+          </div>
 
           <div className="grid gap-6 md:grid-cols-3">
             {/* Total Balance Card */}
@@ -948,11 +1032,14 @@ export default function DashboardPage() {
             <Card>
               <CardHeader className="pb-2 w-full sm:w-auto">
                 <CardTitle>Bank Account</CardTitle>
-               
-                <CardDescription className="flex flex-row gap-1 justify-left">  <CreditCard className="mr-2 h-4 w-4" />  link your bank account   </CardDescription>
+
+                <CardDescription className="flex flex-row gap-1 justify-left">
+                  {" "}
+                  <CreditCard className="mr-2 h-4 w-4" /> link your bank account{" "}
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                {bankAccount ? (
+                {/* {bankAccount ? (
                   <>
                     <div className="rounded-md border p-3">
                       <div className="font-medium">{bankAccount.bankName}</div>
@@ -980,8 +1067,7 @@ export default function DashboardPage() {
                               Update your bank account details
                             </DialogDescription>
                           </DialogHeader>
-                          <BankDetailsForm
-                            initialData={bankAccount}
+                          <BankAccountForm
                             onSuccess={(data) => {
                               setBankAccount(data);
                               toast({
@@ -992,6 +1078,7 @@ export default function DashboardPage() {
                               });
                             }}
                           />
+                                
                         </DialogContent>
                       </Dialog>
                       <Button
@@ -1033,7 +1120,7 @@ export default function DashboardPage() {
                             Add your bank details to convert crypto to fiat.
                           </DialogDescription>
                         </DialogHeader>
-                        <BankDetailsForm
+                        <BankAccountForm
                           onSuccess={(data) => {
                             setBankAccount(data);
                             toast({
@@ -1042,6 +1129,135 @@ export default function DashboardPage() {
                                 "Your bank account has been successfully added.",
                               variant: "default",
                             });
+                          }}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                )} */}
+                {bankAccount && bankAccount.accountNumber ? (
+                  <>
+                    <div className="rounded-md border p-3">
+                      <div className="font-medium">{bankAccount.bankName}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {bankAccount.accountName}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {bankAccount.accountNumber.replace(
+                          /(\d{6})(\d{4})/,
+                          "$1******"
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            Add New Account
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Change Bank Account</DialogTitle>
+                            <DialogDescription>
+                              Update your bank account details
+                            </DialogDescription>
+                          </DialogHeader>
+                          <BankAccountForm
+                            onSuccess={async (data) => {
+                              const { error } = await saveBankAccountToDb(data);
+                              if (error) {
+                                console.error("Save error:", error);
+                                toast({
+                                  title: "Error",
+                                  description:
+                                    "Failed to save bank details. Please try again.",
+                                  variant: "destructive",
+                                });
+                              } else {
+                                setBankAccount(data);
+                                toast({
+                                  title: "Bank Account Added",
+                                  description:
+                                    "Your bank account has been successfully added.",
+                                  variant: "default",
+                                });
+                              }
+                            }}
+                          />
+                        </DialogContent>
+                      </Dialog>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                          const { error } = await removeBankAccountFromDb();
+                          if (error) {
+                            console.error("Remove error:", error);
+                            toast({
+                              title: "Error",
+                              description:
+                                "Failed to remove bank details. Please try again.",
+                              variant: "destructive",
+                            });
+                          } else {
+                            setBankAccount({
+                              bankName: "",
+                              accountNumber: "",
+                              accountName: "",
+                            });
+                            toast({
+                              title: "Bank Account Removed",
+                              description:
+                                "Your bank account has been removed.",
+                              variant: "default",
+                            });
+                          }
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-4 py-4">
+                    <div className="text-center text-muted-foreground">
+                      No bank account linked
+                    </div>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button>
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          Add Bank Account
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Add Bank Details</DialogTitle>
+                          <DialogDescription>
+                            Add your bank details to convert crypto to fiat.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <BankAccountForm
+                          onSuccess={async (data) => {
+                            const { error } = await saveBankAccountToDb(data);
+                            if (error) {
+                              console.error("Save error:", error);
+                              toast({
+                                title: "Error",
+                                description:
+                                  "Failed to save bank details. Please try again.",
+                                variant: "destructive",
+                              });
+                            } else {
+                              setBankAccount(data);
+                              toast({
+                                title: "Bank Account Added",
+                                description:
+                                  "Your bank account has been successfully added.",
+                                variant: "default",
+                              });
+                            }
                           }}
                         />
                       </DialogContent>
@@ -1228,26 +1444,6 @@ export default function DashboardPage() {
           </Card>
         </div>
       </main>
-
-      {/* Conversion Confirmation Dialog */}
-      {/* <ConversionConfirmationDialog
-        open={showConversionConfirmation}
-        onOpenChange={setShowConversionConfirmation}
-        conversionDetails={{
-          fromAmount: convertAmount,
-          fromCurrency: convertFrom.toUpperCase(),
-          toAmount: convertToAmount,
-          toCurrency: convertTo.toUpperCase(),
-          exchangeRate: getCurrentExchangeRate(),
-          fee: `0.5 ${convertFrom.toUpperCase()}`,
-          bankAccount: bankAccount || {
-            bankName: "",
-            accountNumber: "",
-            accountName: "",
-          },
-        }}
-        onConfirm={handleConversionConfirmed} */}
-      />
     </div>
   );
 }

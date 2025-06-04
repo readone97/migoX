@@ -49,6 +49,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import './globals.css'
 import AmigoWalletProvider from "@/providers/AmigoWalletProvider"
 import { Providers } from "./provider";
+import { AccountProvider } from "@/context/AccountContext"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -66,11 +67,15 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <AmigoWalletProvider>
-        <ThemeProvider defaultTheme="dark" enableSystem>
+        <AccountProvider>
+          <AmigoWalletProvider>
+          <ThemeProvider defaultTheme="dark" enableSystem>
           {children}
         </ThemeProvider>
         </AmigoWalletProvider>
+
+        </AccountProvider>
+        
       </body>
     </html>
   )
